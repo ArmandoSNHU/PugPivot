@@ -4,17 +4,28 @@ const ctx = canvas.getContext("2d");
 canvas.width = 480;
 canvas.height = 640;
 
-// Load sprites
-const pugIdle = new Image();
-pugIdle.src = "./assets/pug_idle.png";
+// Background
+const bgImage = new Image();
+bgImage.src = "./assets/cloud.png";
+let bgX = 0;
+let bgSpeed = 1;
 
-const pugRun = new Image();
-pugRun.src = "./assets/pug_run.png";
+// Pug sprites
+const pugIdle = new Image();
+pugIdle.src = "./assets/pug/Pug_idle.png";
+
+const pugRun1 = new Image();
+pugRun1.src = "./assets/pug/pug_run_1.png";
+
+const pugRun2 = new Image();
+pugRun2.src = "./assets/pug/pug_run_2.png";
 
 const pugHurt = new Image();
-pugHurt.src = "./assets/pug_hurt.png";
+pugHurt.src = "./assets/pug/pug_hit.png";
 
 let currentSprite = pugIdle;
+let runFrame = 0;
+let runTimer = 0;
 
 let player = {
   x: 50,
@@ -24,7 +35,7 @@ let player = {
   velocity: 0,
   gravity: 0.6,
   jumpStrength: -10,
-  state: "idle", // "idle", "run", "hurt"
+  state: "idle", // idle, run, hurt
 };
 
 let obstacles = [];
@@ -37,29 +48,55 @@ function jump() {
   if (!isGameOver) {
     player.velocity = player.jumpStrength;
     player.state = "run";
-    currentSprite = pugRun;
   } else {
     resetGame();
   }
 }
 
 function drawPlayer() {
-  ctx.drawImage(currentSprite, player.x, player.y, player.width, player.height);
+  // Animate run
+  if (player.state === "run") {
+    runTimer++;
+    if (runTimer % 10 === 0) {
+      runFrame = (runFrame + 1) % 2;
+    }
+    currentSprite = runFrame === 0 ? pugRun1 : pugRun2;
+  }
+
+  if (player.state === "idle") {
+    currentSprite = pugIdle;
+  }
+
+  if (player.state === "hurt") {
+    currentSprite = pugHurt;
+  }
+
+  if (currentSprite.complete && currentSprite.naturalHeight !== 0) {
+    ctx.drawImage(currentSprite, player.x, player.y, player.width, player.height);
+  } else {
+    ctx.fillStyle = "#0f0";
+    ctx.fillRect(player.x, player.y, player.width, player.height);
+  }
 }
 
 function update() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  // Scroll background
+  bgX -= bgSpeed;
+  if (bgX <= -canvas.width) {
+    bgX = 0;
+  }
 
+  ctx.drawImage(bgImage, bgX, 0, canvas.width, canvas.height);
+  ctx.drawImage(bgImage, bgX + canvas.width, 0, canvas.width, canvas.height);
+
+  // Player physics
   player.velocity += player.gravity;
   player.y += player.velocity;
 
-  // Switch to idle if falling
   if (player.velocity > 1 && player.state !== "hurt") {
-    currentSprite = pugIdle;
     player.state = "idle";
   }
 
-  // Ground or top collision
   if (player.y + player.height > canvas.height || player.y < 0) {
     endGame();
   }
@@ -69,6 +106,7 @@ function update() {
     let obs = obstacles[i];
     obs.x -= gameSpeed;
 
+    // Collision
     if (
       player.x < obs.x + obs.width &&
       player.x + player.width > obs.x &&
@@ -99,6 +137,7 @@ function update() {
 
   drawPlayer();
 
+  // Score text
   ctx.fillStyle = "#fff";
   ctx.font = "20px Arial";
   ctx.fillText("Score: " + score, 20, 30);
@@ -131,12 +170,21 @@ function resetGame() {
   update();
 }
 
+// Input
 document.addEventListener("keydown", (e) => {
   if (e.code === "Space") jump();
 });
-
 document.addEventListener("click", () => {
   jump();
 });
 
-update();
+// Wait for all images
+let imagesLoaded = 0;
+[pugIdle, pugRun1, pugRun2, pugHurt, bgImage].forEach((img) => {
+  img.onload = () => {
+    imagesLoaded++;
+    if (imagesLoaded === 5) {
+      update();
+    }
+  };
+});
