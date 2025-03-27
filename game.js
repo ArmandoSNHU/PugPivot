@@ -4,11 +4,16 @@ const ctx = canvas.getContext("2d");
 canvas.width = 480;
 canvas.height = 640;
 
+// Title screen
+const titleImage = new Image();
+titleImage.src = "./assets/Title.png";
+let showTitle = true;
+
 // Static background
 const bgStatic = new Image();
 bgStatic.src = "./assets/bg/bubk.png";
 
-// Scrolling clouds
+// Clouds
 const cloudImage = new Image();
 cloudImage.src = "./assets/bg/cloud.png";
 let cloudX = 0;
@@ -50,6 +55,7 @@ let bottomObstacles = [];
 let topObstacles = [];
 let gameSpeed = 3;
 let score = 0;
+let highScore = localStorage.getItem("highScore") || 0;
 let isGameOver = false;
 let frames = 0;
 let level = 1;
@@ -59,7 +65,6 @@ function jump() {
   if (!isGameOver) {
     fartSound.currentTime = 0;
     fartSound.play();
-    // Randomize jump strength ±2
     let randomBoost = Math.random() * 4 - 2;
     player.velocity = player.jumpStrength + randomBoost;
     player.state = "run";
@@ -112,7 +117,7 @@ function update() {
     endGame();
   }
 
-  // Bottom Spikes
+  // Bottom spikes
   for (let i = 0; i < bottomObstacles.length; i++) {
     let obs = bottomObstacles[i];
     obs.x -= gameSpeed;
@@ -131,7 +136,7 @@ function update() {
   }
 
   if (frames % 100 === 0) {
-    let height = Math.random() * 100 + 140;
+    let height = Math.random() * 200 + 150;
     bottomObstacles.push({
       x: canvas.width,
       y: canvas.height - height,
@@ -144,14 +149,13 @@ function update() {
     bottomObstacles.shift();
     score++;
 
-    // LEVEL UP every 20 spikes
-    if (score % 6 === 0 && level < maxLevel) {
+    if (score % 20 === 0 && level < maxLevel) {
       level++;
-      gameSpeed *= 2; // 🔥 multiplies speed
+      gameSpeed *= 10;
     }
   }
 
-  // Top Spikes
+  // Top spikes
   for (let i = 0; i < topObstacles.length; i++) {
     let obs = topObstacles[i];
     obs.x -= gameSpeed;
@@ -169,8 +173,8 @@ function update() {
     ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
   }
 
-  if (frames % 100 === 0) {
-    let height = Math.random() * 100 + 140;
+  if (frames % 120 === 0) {
+    let height = Math.random() * 150 + 120;
     topObstacles.push({
       x: canvas.width,
       y: 0,
@@ -185,11 +189,12 @@ function update() {
 
   drawPlayer();
 
-  // Score + Level display
+  // Score and level
   ctx.fillStyle = "#fff";
   ctx.font = "20px Arial";
   ctx.fillText("Score: " + score, 20, 30);
   ctx.fillText("Level: " + level, 20, 60);
+  ctx.fillText("High Score: " + highScore, 20, 90);
 
   frames++;
   if (!isGameOver) requestAnimationFrame(update);
@@ -199,6 +204,11 @@ function endGame() {
   isGameOver = true;
   player.state = "hurt";
   currentSprite = pugHurt;
+
+  if (score > highScore) {
+    highScore = score;
+    localStorage.setItem("highScore", highScore);
+  }
 
   ctx.fillStyle = "#fff";
   ctx.font = "40px Arial";
@@ -222,20 +232,34 @@ function resetGame() {
   update();
 }
 
+// Handle input
 document.addEventListener("keydown", (e) => {
-  if (e.code === "Space") jump();
-});
-document.addEventListener("click", () => {
-  jump();
+  if (e.code === "Space") {
+    if (showTitle) {
+      showTitle = false;
+      update();
+    } else {
+      jump();
+    }
+  }
 });
 
-// Load assets
+document.addEventListener("click", () => {
+  if (showTitle) {
+    showTitle = false;
+    update();
+  } else {
+    jump();
+  }
+});
+
+// Load everything
 let imagesLoaded = 0;
-[bgStatic, cloudImage, pugIdle, pugRun1, pugRun2, pugHurt].forEach((img) => {
+[titleImage, bgStatic, cloudImage, pugIdle, pugRun1, pugRun2, pugHurt].forEach((img) => {
   img.onload = () => {
     imagesLoaded++;
-    if (imagesLoaded === 6) {
-      update();
+    if (imagesLoaded === 7) {
+      ctx.drawImage(titleImage, 0, 0, canvas.width, canvas.height);
     }
   };
 });
